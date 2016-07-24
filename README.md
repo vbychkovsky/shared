@@ -1,7 +1,7 @@
 shared
 ======
 
-Democratic photo sharing service: everyone should be able to run their own service if they want to! :-)
+A democratic photo sharing service: everyone should be able to run their own service if they want to! :-)
 
 License
 -------
