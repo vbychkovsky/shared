@@ -124,7 +124,7 @@ different platforms (iOS/Android/Web).
 
 ToDo / wishlist
 ---
-- add video/photos of what the results looks like
+- add video/photos of what the setup looks like and how it works
 - is it possible to avoid having the script run as root?
 - modularize the script to allow for different backends,
   like Google Photos, Flickr, and/or Backblaze.
