@@ -7,7 +7,7 @@ Why?
 
 I enjoy taking photos with a real camera (i.e. not a cellphone).  However, after having kids it became harder to find time to sit down at a computer to upload (and to adjust) photos. This is why I have made a little photo upload station using Raspberry Pi. The goal here is to have a hassle-free way to save photos and videos in original qualty in a way that allows easy access and sharing later.
 
-What? 
+What?
 ---
 This directory contains instructions, configs files, and
 scripts that I used to turn my Raspberry Pi into a photo
@@ -21,7 +21,7 @@ simply swap cards and continue taking photos with a new one.
 If you use (free) Amazon Photos app, you'll see new JPEG photos
 uploaded to your account seconds after you plug your storage
 media into the uploader.
- 
+
 
 Setup instructions
 ===
@@ -32,7 +32,7 @@ Hardware that you will need:
 - SD/Flash reader (which one you get depends on your camera,
   if your camera is new, you probably just want an SD
     reader)
- 
+
 Accounts:
 - Amazon Cloud Drive account (this comes free with Amazon Prime
   or a seprate service as Amazon Photos)
@@ -56,10 +56,10 @@ Software setup:
   # configure acd_cli to your user Amazon account
   acd_cli sync
   # this will display a URL that you should psate into a browser
-  # after you enter your password oauth_data file will be downloaded 
+  # after you enter your password oauth_data file will be downloaded
   # copy the contents of this file to your RaspberryPi
   # to /home/pi/.cache/acd_cli/oauth_data
-  ~~~ 
+  ~~~
 - Update your configs and setup the auto-upload script
   ~~~
   git clone https://github.com/vbychkovsky/shared.git
@@ -79,8 +79,8 @@ At this point you should have a working uploader.
 
 Notes
 ===
- 
-Related work 
+
+Related work
 ---
 
 At the time I've created this setup for myself there were no
@@ -98,7 +98,7 @@ in my experience. However, your milage may vary.
 
 
 Why Amazon Photos (and not Flickr/Google/etc)?  
---- 
+---
 
 As of 2015, Amazon Photos is the cheapest photo/video
 storage service that enables storage of original photos
@@ -128,11 +128,9 @@ ToDo / wishlist
 - is it possible to avoid having the script run as root?
 - modularize the script to allow for different backends,
   like Google Photos, Flickr, and/or Backblaze.
-- do cron-based retries if Amazon's throttling
+- do cron-based retries if Amazon is throttling
 
 
 P.S. Your suggestions/corrections/ideas for any of the above are
 welcome. E-mail me at vladb at csail.mit.edu or just create
 a pull-request.
-
-
