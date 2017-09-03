@@ -3,6 +3,9 @@
 import argparse
 import hashlib
 import subprocess
+import os
+import json
+import itertools
 
 def computeSHA1(filename, blocksize=None):
     sha1 = hashlib.sha1()
@@ -23,7 +26,7 @@ if __name__ == "__main__":
 
     bucket = "myPublic1"
     hashDir = "hash"
-    infoFile = "info.txt"
+    infoExt = ".stats"
     tmpDir = "/tmp"
 
     args = parser.parse_args()
@@ -32,28 +35,54 @@ if __name__ == "__main__":
     for filepath in args.file:
         try:
             print("processing {}...".format(filepath))
+
+            # get filesystem stats
+            stats = os.stat(filepath)
+
             sha1 = computeSHA1(filepath)
-            print("sha1: {}".format(sha1))
-        
+
+            basename = os.path.basename(filepath)
+            b2Filename = "{hashDir}/{sha1}_{basename}".format(**dict(globals(), **locals()))
+
+            localFileStats = {
+                'filename': os.path.basename(filepath),
+                'size': stats.st_size,
+                'b2link': b2Filename,
+            }
+
+
             # check if file is already there (download the link)
-            b2Filename = "{hashDir}/{sha1}/{infoFile}".format(**dict(globals(), **locals()))
-            localFilename = tmpDir + "/" + sha1
-            print("Attempting to download '{}'".format(b2Filename))
-            res = subprocess.call(['b2', 'download-file-by-name', bucket, b2Filename, localFilename])
-            print("return code: {}, file: {}".format(res, localFilename))
-            if res == 0:
-                # ToDo: check the file contents...
-                print("File already uploaded")
-            else:
-                print("Attempting to upload file")
-                res = subprocess.call(['b2', 'upload-file',  bucket, filepath, b2Filename])        
-                if res <> 0:
-                    print("Upload failed")
-                
+            b2StatsName = "{hashDir}/{sha1}{infoExt}".format(**dict(globals(), **locals()))
+            localStatsName = tmpDir + "/" + sha1 + ".stats_remote" # replace with temp file
+            try:
+                output = subprocess.check_output(['b2', 'download-file-by-name', bucket, b2StatsName, localStatsName])
+                print("Found an existing stats file, checking...")
+                remoteStats = json.load(file(localStatsName))
 
-            
-        except IOError, e:
+                if cmp(remoteStats, localFileStats) <> 0:
+                    print("Stats disagree: {}\n{}\n".format(remoteStats, localFileStats))
+                else:
+                    print("Stats are exactly the same!")
+
+            except subprocess.CalledProcessError, e:
+                output = subprocess.check_output(['b2', 'upload-file',  bucket, filepath, b2Filename])
+
+                jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
+                parsedOutput = json.loads(jsonString)
+                print(parsedOutput)
+
+                # copy some fields into the output
+                for field in ['fileId', 'uploadTimestamp']:
+                    localFileStats[field] = parsedOutput[field]
+
+                print localFileStats
+
+                jsonFile = tmpDir + "/" + sha1 + ".stats"
+                with open(jsonFile, 'wt') as j:
+                    json.dump(localFileStats, file(jsonFile, 'wt'))
+                # upload it
+                output = subprocess.check_output(['b2', 'upload-file', bucket, jsonFile, b2StatsName])
+
+
+        except OSError, e:
             print(e)
-
-        
-
