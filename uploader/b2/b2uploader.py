@@ -2,6 +2,8 @@
 
 # ToDo:
 # - upload a date link file
+# - switch to using logging module for debug output
+# -- control logging level from the command line
 # - (opt) refactor B2 commands
 # -- maybe replace B2 shell call with python?
 # - (opt) factor out naming converntions
@@ -14,6 +16,7 @@ import subprocess
 import os
 import json
 import itertools
+import logging
 
 def computeSHA1(filename, blocksize=None):
     sha1 = hashlib.sha1()
@@ -36,7 +39,7 @@ def uploadFileToB2(
 
         tmpDir = "/tmp"
         try:
-            print("processing {}...".format(filepath))
+            logging.info("processing {}...".format(filepath))
 
             # get filesystem stats
             stats = os.stat(filepath)
@@ -58,26 +61,26 @@ def uploadFileToB2(
             localStatsName = tmpDir + "/" + sha1 + ".stats_remote" # replace with temp file
             try:
                 output = subprocess.check_output(['b2', 'download-file-by-name', bucket, b2StatsName, localStatsName])
-                print("Found an existing stats file, checking...")
+                logging.info("Found an existing stats file, checking...")
                 remoteStats = json.load(file(localStatsName))
 
                 if cmp(remoteStats, localFileStats) <> 0:
-                    print("Stats disagree: {}\n{}\n".format(remoteStats, localFileStats))
+                    logging.error("Stats disagree: {}\n{}\n".format(remoteStats, localFileStats))
                 else:
-                    print("Stats are exactly the same!")
+                    logging.info("Stats are exactly the same!")
 
             except subprocess.CalledProcessError, e:
                 output = subprocess.check_output(['b2', 'upload-file',  bucket, filepath, b2Filename])
 
                 jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
                 parsedOutput = json.loads(jsonString)
-                print(parsedOutput)
+                logging.debug(parsedOutput)
 
                 # copy some fields into the output
                 for field in ['fileId', 'uploadTimestamp']:
                     localFileStats[field] = parsedOutput[field]
 
-                print localFileStats
+                logging.debug(localFileStats)
 
                 jsonFile = tmpDir + "/" + sha1 + ".stats"
                 with open(jsonFile, 'wt') as j:
@@ -87,7 +90,7 @@ def uploadFileToB2(
 
 
         except OSError, e:
-            print(e)
+            logging.error(e)
             return False
 
         return True
@@ -99,9 +102,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Hash-upload files to B2.')
     parser.add_argument('file', nargs='+', help='files to upload')
 
-
     args = parser.parse_args()
-    print(args) # ToDo: remove
+    logging.debug(args)
+
+
 
     for filepath in args.file:
         uploadFileToB2(filepath)
