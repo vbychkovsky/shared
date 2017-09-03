@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+# ToDo:
+# - upload a date link file
+# - (opt) refactor B2 commands
+# - (opt) factor out naming converntions
+# - improve error chechking
+# - switch to a more robust temp file method
+
 import argparse
 import hashlib
 import subprocess
