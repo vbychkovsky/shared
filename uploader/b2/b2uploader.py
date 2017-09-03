@@ -3,6 +3,7 @@
 # ToDo:
 # - upload a date link file
 # - (opt) refactor B2 commands
+# -- maybe replace B2 shell call with python?
 # - (opt) factor out naming converntions
 # - improve error chechking
 # - switch to a more robust temp file method
@@ -26,20 +27,14 @@ def computeSHA1(filename, blocksize=None):
     return sha1.hexdigest()
 
 
-if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Hash-upload files to B2.')
-    parser.add_argument('file', nargs='+', help='files to upload')
+def uploadFileToB2(
+            filepath,
+            bucket = "myPublic1",
+            hashDir = "hash",
+            infoExt = ".stats"):
 
-    bucket = "myPublic1"
-    hashDir = "hash"
-    infoExt = ".stats"
-    tmpDir = "/tmp"
-
-    args = parser.parse_args()
-    print(args) # ToDo: remove
-
-    for filepath in args.file:
+        tmpDir = "/tmp"
         try:
             print("processing {}...".format(filepath))
 
@@ -93,3 +88,20 @@ if __name__ == "__main__":
 
         except OSError, e:
             print(e)
+            return False
+
+        return True
+
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description='Hash-upload files to B2.')
+    parser.add_argument('file', nargs='+', help='files to upload')
+
+
+    args = parser.parse_args()
+    print(args) # ToDo: remove
+
+    for filepath in args.file:
+        uploadFileToB2(filepath)
