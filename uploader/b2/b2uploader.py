@@ -56,7 +56,7 @@ def uploadFileToB2(
 
             # check if file is already there (download the link)
             b2StatsName = "{hashDir}/{sha1}{infoExt}".format(**dict(globals(), **locals()))
-            localStatsName = tmpDir + "/" + sha1 + ".stats_remote" # replace with temp file
+            localStatsName = tmpDir + "/" + sha1 + ".stats_remote" # ToDo: swtich toa temp file
             try:
                 output = subprocess.check_output(['b2', 'download-file-by-name', bucket, b2StatsName, localStatsName])
                 logging.info("Found an existing stats file, checking...")
@@ -80,9 +80,8 @@ def uploadFileToB2(
 
                 logging.debug(localFileStats)
 
-                jsonFile = tmpDir + "/" + sha1 + ".stats"
-                with open(jsonFile, 'wt') as j:
-                    json.dump(localFileStats, file(jsonFile, 'wt'))
+                jsonFile = tmpDir + "/" + sha1 + ".stats" # ToDo: switch to a temp file
+                json.dump(localFileStats, file(jsonFile, 'wt'))
                 # upload it
                 output = subprocess.check_output(['b2', 'upload-file', bucket, jsonFile, b2StatsName])
 
