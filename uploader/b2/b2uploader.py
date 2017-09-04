@@ -62,8 +62,10 @@ def uploadFileToB2(
                 logging.info("Found an existing stats file, checking...")
                 remoteStats = json.load(file(localStatsName))
 
+                localFileStats = json.loads(json.dumps(localFileStats)) # not sure if I really need this...
+                # ToDo: replace the follow with a real check
                 if cmp(remoteStats, localFileStats) <> 0:
-                    logging.error("Stats disagree: {}\n{}\n".format(remoteStats, localFileStats))
+                    logging.error("Stats disagree:\n{}\n{}\n".format(remoteStats, localFileStats))
                 else:
                     logging.info("Stats are exactly the same!")
 
@@ -73,6 +75,8 @@ def uploadFileToB2(
                 jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
                 parsedOutput = json.loads(jsonString)
                 logging.debug(parsedOutput)
+
+                # ToDo: upload date index entry here
 
                 # copy some fields into the output
                 for field in ['fileId', 'uploadTimestamp']:
@@ -84,6 +88,7 @@ def uploadFileToB2(
                 json.dump(localFileStats, file(jsonFile, 'wt'))
                 # upload it
                 output = subprocess.check_output(['b2', 'upload-file', bucket, jsonFile, b2StatsName])
+
 
 
         except OSError, e:
