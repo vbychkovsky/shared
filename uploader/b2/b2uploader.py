@@ -2,8 +2,6 @@
 
 # ToDo:
 # - upload a date link file
-# - switch to using logging module for debug output
-# -- control logging level from the command line
 # - (opt) refactor B2 commands
 # -- maybe replace B2 shell call with python?
 # - (opt) factor out naming converntions
@@ -101,8 +99,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Hash-upload files to B2.')
     parser.add_argument('file', nargs='+', help='files to upload')
+    parser.add_argument('--loglevel', default='INFO')
 
     args = parser.parse_args()
+
+    logLevel = getattr(logging, args.loglevel.upper(), None)
+    if logLevel is not None:
+        logging.basicConfig(loglevel=logLevel)
+
     logging.debug(args)
 
 
