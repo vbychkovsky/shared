@@ -64,7 +64,6 @@ def uploadFileToB2(
                 logging.info("Found an existing stats file, checking...")
                 remoteStats = json.load(file(localStatsName))
 
-                localFileStats = json.loads(json.dumps(localFileStats)) # not sure if I really need this...
                 if remoteStats['filename'] != localFileStats['filename']:
                     logging.error("Stats disagree:\n{}\n{}\n".format(remoteStats, localFileStats))
                 else:
