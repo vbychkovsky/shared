@@ -15,6 +15,7 @@ import os
 import json
 import itertools
 import logging
+import tempfile
 
 def computeSHA1(filename, blocksize=None):
     sha1 = hashlib.sha1()
@@ -84,10 +85,12 @@ def uploadFileToB2(
 
                 logging.debug(localFileStats)
 
-                jsonFile = tmpDir + "/" + sha1 + ".stats" # ToDo: switch to a temp file
-                json.dump(localFileStats, file(jsonFile, 'wt'))
-                # upload it
-                output = subprocess.check_output(['b2', 'upload-file', bucket, jsonFile, b2StatsName])
+                with tempfile.NamedTemporaryFile() as f:
+                    json.dump(localFileStats, f)
+                    # make sure that the data is in the OS buffers for later reading)
+                    f.flush()
+                    # upload it
+                    output = subprocess.check_output(['b2', 'upload-file', bucket, f.name, b2StatsName])
 
 
 
