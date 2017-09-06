@@ -40,7 +40,9 @@ def loadRemoteJSON(bucket, filename):
 def rawUploadFileToB2(bucket, b2Filepath, localFilepath):
     try:
         output = subprocess.check_output(['b2', 'upload-file', bucket, localFilepath, b2Filepath])
-        return output
+        jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
+        parsedOutput = json.loads(jsonString)
+        return parsedOutput
     except subprocess.CalledProcessError, e:
         logging.error("Raw upload failed for {}:{}".format(b2Filepath, e))
         return None
@@ -87,19 +89,16 @@ def uploadFileToB2(
 
         else:
             output = rawUploadFileToB2(bucket, b2Filename, filepath)
-
             if output is None:
                 return False
 
-            jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
-            parsedOutput = json.loads(jsonString)
-            logging.debug(parsedOutput)
+            logging.debug(output)
 
             # ToDo: upload date index entry here
 
             # copy some fields into the output
             for field in ['fileId', 'uploadTimestamp']:
-                localFileStats[field] = parsedOutput[field]
+                localFileStats[field] = output[field]
 
             logging.debug(localFileStats)
 
