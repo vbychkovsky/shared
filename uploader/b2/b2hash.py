@@ -5,6 +5,7 @@
 # - upload a date link file
 # - (opt) refactor B2 commands
 # -- maybe replace B2 shell call with python?
+# - better error checking - can uploads fail silently?
 
 import argparse
 import hashlib
@@ -40,6 +41,7 @@ def loadRemoteJSON(bucket, filename):
 def rawUploadFileToB2(bucket, b2Filepath, localFilepath):
     try:
         output = subprocess.check_output(['b2', 'upload-file', bucket, localFilepath, b2Filepath])
+        # ToDo: can the above upload fail without giving a bad return code?
         jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
         parsedOutput = json.loads(jsonString)
         return parsedOutput
