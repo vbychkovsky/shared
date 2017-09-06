@@ -28,6 +28,15 @@ def computeSHA1(filename, blocksize=None):
     return sha1.hexdigest()
 
 
+def loadRemoteJSON(bucket, filename):
+    try:
+        with tempfile.NamedTemporaryFile() as f:
+            output = subprocess.check_output(['b2', 'download-file-by-name', bucket, filename, f.name])
+            logging.info("Found an existing stats file, checking...")
+            return json.load(f)
+    except subprocess.CalledProcessError, e:
+        return None
+
 
 def uploadFileToB2(
             filepath,
@@ -57,18 +66,14 @@ def uploadFileToB2(
 
 
             # check if file is already there (download the link)
-            try:
-                with tempfile.NamedTemporaryFile() as f:
-                    output = subprocess.check_output(['b2', 'download-file-by-name', bucket, b2StatsName, f.name])
-                    logging.info("Found an existing stats file, checking...")
-                    remoteStats = json.load(f)
+            remoteStats = loadRemoteJSON(bucket, b2StatsName)
+            if remoteStats is not None and 'filename' in remoteStats:
+                if remoteStats['filename'] != localFileStats['filename']:
+                    logging.error("Stats disagree:\n{}\n{}\n".format(remoteStats, localFileStats))
+                else:
+                    logging.info("Stats match")
 
-                    if remoteStats['filename'] != localFileStats['filename']:
-                        logging.error("Stats disagree:\n{}\n{}\n".format(remoteStats, localFileStats))
-                    else:
-                        logging.info("Stats match")
-
-            except subprocess.CalledProcessError, e:
+            else:
                 output = subprocess.check_output(['b2', 'upload-file',  bucket, filepath, b2Filename])
 
                 jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
