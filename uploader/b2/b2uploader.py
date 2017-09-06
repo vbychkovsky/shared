@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 # ToDo:
+# - convert to a command interface
+# -- upload (current command)
+# -- list/download metadata
 # - upload a date link file
 # - (opt) refactor B2 commands
 # -- maybe replace B2 shell call with python?
-# - (opt) factor out naming converntions
-# - improve error checking
 
 import argparse
 import hashlib
@@ -38,70 +39,82 @@ def loadRemoteJSON(bucket, filename):
         return None
 
 
+def rawUploadFileToB2(bucket, b2Filepath, localFilepath):
+    try:
+        output = subprocess.check_output(['b2', 'upload-file', bucket, localFilepath, b2Filepath])
+        return output
+    except subprocess.CalledProcessError, e:
+        logging.error("Raw upload failed for {}:{}".format(b2Filepath, e))
+        return None
+
+
 def uploadFileToB2(
             filepath,
             bucket = "myPublic1",
             hashDir = "hash",
             infoExt = ".stats"):
 
-        tmpDir = "/tmp"
-        try:
-            logging.info("processing {}...".format(filepath))
+        logging.info("processing {}...".format(filepath))
 
+        try:
             # get filesystem stats
             stats = os.stat(filepath)
-
-            sha1 = computeSHA1(filepath)
-
-            basename = os.path.basename(filepath)
-            b2Filename = "{hashDir}/{sha1}_{basename}".format(**dict(globals(), **locals()))
-            b2StatsName = "{hashDir}/{sha1}{infoExt}".format(**dict(globals(), **locals()))
-
-            localFileStats = {
-                'filename': os.path.basename(filepath),
-                'size': stats.st_size,
-                'mtime': stats.st_mtime,
-                'b2link': b2Filename,
-            }
-
-
-            # check if file is already there (download the link)
-            remoteStats = loadRemoteJSON(bucket, b2StatsName)
-            if remoteStats is not None and 'filename' in remoteStats:
-                if remoteStats['filename'] != localFileStats['filename']:
-                    logging.error("Stats disagree:\n{}\n{}\n".format(remoteStats, localFileStats))
-                else:
-                    logging.info("Stats match")
-
-            else:
-                output = subprocess.check_output(['b2', 'upload-file',  bucket, filepath, b2Filename])
-
-                jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
-                parsedOutput = json.loads(jsonString)
-                logging.debug(parsedOutput)
-
-                # ToDo: upload date index entry here
-
-                # copy some fields into the output
-                for field in ['fileId', 'uploadTimestamp']:
-                    localFileStats[field] = parsedOutput[field]
-
-                logging.debug(localFileStats)
-
-                with tempfile.NamedTemporaryFile() as f:
-                    json.dump(localFileStats, f)
-                    # make sure that the data is in the OS buffers for later reading
-                    f.flush()
-                    # upload it
-                    output = subprocess.check_output(['b2', 'upload-file', bucket, f.name, b2StatsName])
-
-
-
         except OSError, e:
             logging.error(e)
             return False
 
-        return True
+        sha1 = computeSHA1(filepath)
+
+        basename = os.path.basename(filepath)
+        b2Filename = "{hashDir}/{sha1}_{basename}".format(**dict(globals(), **locals()))
+        b2StatsName = "{hashDir}/{sha1}{infoExt}".format(**dict(globals(), **locals()))
+
+        localFileStats = {
+            'filename': os.path.basename(filepath),
+            'size': stats.st_size,
+            'mtime': stats.st_mtime,
+            'b2link': b2Filename,
+        }
+
+
+        # check if file is already there (download the link)
+        remoteStats = loadRemoteJSON(bucket, b2StatsName)
+        if remoteStats is not None and 'filename' in remoteStats:
+            if remoteStats['filename'] != localFileStats['filename']:
+                logging.error("Stats disagree:\n{}\n{}\n".format(remoteStats, localFileStats))
+                return False
+            else:
+                logging.info("Stats match")
+                return True
+
+        else:
+            output = rawUploadFileToB2(bucket, b2Filename, filepath)
+
+            if output is None:
+                return False
+
+            jsonString = "".join(itertools.dropwhile(lambda x: x.strip() <> '{', output.splitlines()))
+            parsedOutput = json.loads(jsonString)
+            logging.debug(parsedOutput)
+
+            # ToDo: upload date index entry here
+
+            # copy some fields into the output
+            for field in ['fileId', 'uploadTimestamp']:
+                localFileStats[field] = parsedOutput[field]
+
+            logging.debug(localFileStats)
+
+            with tempfile.NamedTemporaryFile() as f:
+                json.dump(localFileStats, f)
+                # make sure that the data is in the OS buffers for later reading
+                f.flush()
+                # upload it
+                output = rawUploadFileToB2(bucket, b2StatsName, f.name)
+                if output is not None:
+                    return True
+
+        return False
 
 
 
