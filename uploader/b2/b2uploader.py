@@ -109,11 +109,9 @@ if __name__ == "__main__":
 
     logLevel = getattr(logging, args.loglevel.upper(), None)
     if logLevel is not None:
-        logging.basicConfig(loglevel=logLevel)
+        logging.basicConfig(level=logLevel)
 
     logging.debug(args)
-
-
 
     for filepath in args.file:
         uploadFileToB2(filepath)
