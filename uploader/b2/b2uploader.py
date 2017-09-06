@@ -5,8 +5,7 @@
 # - (opt) refactor B2 commands
 # -- maybe replace B2 shell call with python?
 # - (opt) factor out naming converntions
-# - improve error chechking
-# - switch to a more robust temp file method
+# - improve error checking
 
 import argparse
 import hashlib
@@ -47,6 +46,7 @@ def uploadFileToB2(
 
             basename = os.path.basename(filepath)
             b2Filename = "{hashDir}/{sha1}_{basename}".format(**dict(globals(), **locals()))
+            b2StatsName = "{hashDir}/{sha1}{infoExt}".format(**dict(globals(), **locals()))
 
             localFileStats = {
                 'filename': os.path.basename(filepath),
@@ -57,7 +57,6 @@ def uploadFileToB2(
 
 
             # check if file is already there (download the link)
-            b2StatsName = "{hashDir}/{sha1}{infoExt}".format(**dict(globals(), **locals()))
             try:
                 with tempfile.NamedTemporaryFile() as f:
                     output = subprocess.check_output(['b2', 'download-file-by-name', bucket, b2StatsName, f.name])
@@ -86,7 +85,7 @@ def uploadFileToB2(
 
                 with tempfile.NamedTemporaryFile() as f:
                     json.dump(localFileStats, f)
-                    # make sure that the data is in the OS buffers for later reading)
+                    # make sure that the data is in the OS buffers for later reading
                     f.flush()
                     # upload it
                     output = subprocess.check_output(['b2', 'upload-file', bucket, f.name, b2StatsName])
