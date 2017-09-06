@@ -63,11 +63,10 @@ def uploadFileToB2(
                 remoteStats = json.load(file(localStatsName))
 
                 localFileStats = json.loads(json.dumps(localFileStats)) # not sure if I really need this...
-                # ToDo: replace the follow with a real check
-                if cmp(remoteStats, localFileStats) <> 0:
+                if remoteStats['filename'] != localFileStats['filename']:
                     logging.error("Stats disagree:\n{}\n{}\n".format(remoteStats, localFileStats))
                 else:
-                    logging.info("Stats are exactly the same!")
+                    logging.info("Stats match")
 
             except subprocess.CalledProcessError, e:
                 output = subprocess.check_output(['b2', 'upload-file',  bucket, filepath, b2Filename])
