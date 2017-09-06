@@ -50,6 +50,7 @@ def uploadFileToB2(
             localFileStats = {
                 'filename': os.path.basename(filepath),
                 'size': stats.st_size,
+                'mtime': stats.st_mtime,
                 'b2link': b2Filename,
             }
 
