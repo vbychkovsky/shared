@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 # ToDo:
-# - convert to a command interface
-# -- upload (current command)
-# -- list/download metadata
+# - implement list/download metadata
 # - upload a date link file
 # - (opt) refactor B2 commands
 # -- maybe replace B2 shell call with python?
@@ -116,13 +114,26 @@ def uploadFileToB2(
 
         return False
 
+def uploadCommand(args):
+    for filepath in args.file:
+        uploadFileToB2(filepath)
 
+def listCommand(args):
+    logging.error("list command is not yet implemented!")
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Hash-upload files to B2.')
-    parser.add_argument('file', nargs='+', help='files to upload')
+    parser = argparse.ArgumentParser(description='Hash-based file handling for B2.')
     parser.add_argument('--loglevel', default='INFO')
+
+    subparsers = parser.add_subparsers(help='<still need to write this up>')
+
+    uploadcmd = subparsers.add_parser('upload', help='hash-upload files to b2')
+    uploadcmd.add_argument('file', nargs='+', help='files to upload')
+    uploadcmd.set_defaults(func=uploadCommand)
+
+    listcmd = subparsers.add_parser('list', help='read metadata for hash-uploads')
+    listcmd.set_defaults(func=listCommand)
 
     args = parser.parse_args()
 
@@ -132,5 +143,4 @@ if __name__ == "__main__":
 
     logging.debug(args)
 
-    for filepath in args.file:
-        uploadFileToB2(filepath)
+    args.func(args)
