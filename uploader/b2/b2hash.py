@@ -31,7 +31,7 @@ def computeSHA1(filename, blocksize=None):
 def loadRemoteJSON(bucket, filename):
     try:
         with tempfile.NamedTemporaryFile() as f:
-            output = subprocess.check_output(['b2', 'download-file-by-name', bucket, filename, f.name])
+            output = subprocess.check_output(['b2', 'download-file-by-name', '--noProgress', bucket, filename, f.name])
             return json.load(f)
     except subprocess.CalledProcessError, e:
         return None
@@ -131,6 +131,7 @@ def b2listFiles(bucket = 'myPublic1', startFile = ""):
 
 def listCommand(args):
     bucket = 'myPublic1'
+    # ToDo turn the following command into an iterator
     result = b2listFiles(bucket, 'hash/')
     for f in result['files']:
         filename = f["fileName"]
@@ -138,6 +139,7 @@ def listCommand(args):
         if filename.startswith("hash/") and filename.endswith(".stats"):
             info = loadRemoteJSON(bucket, filename)
             print("{}, {}".format(info['filename'], info["size"]))
+
 
 if __name__ == "__main__":
 
