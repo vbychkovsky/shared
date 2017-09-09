@@ -32,7 +32,6 @@ def loadRemoteJSON(bucket, filename):
     try:
         with tempfile.NamedTemporaryFile() as f:
             output = subprocess.check_output(['b2', 'download-file-by-name', bucket, filename, f.name])
-            logging.info("Found an existing stats file, checking...")
             return json.load(f)
     except subprocess.CalledProcessError, e:
         return None
@@ -115,12 +114,30 @@ def uploadFileToB2(
 
         return False
 
+
 def uploadCommand(args):
     for filepath in args.file:
         uploadFileToB2(filepath)
 
+
+def b2listFiles(bucket = 'myPublic1', startFile = ""):
+    try:
+        output = subprocess.check_output(['b2', 'list-file-names', bucket, startFile])
+        return json.loads(output)
+    except subprocess.CalledProcessError, e:
+        logging.error(e)
+        return None
+
+
 def listCommand(args):
-    logging.error("list command is not yet implemented!")
+    bucket = 'myPublic1'
+    result = b2listFiles(bucket, 'hash/')
+    for f in result['files']:
+        filename = f["fileName"]
+        # ToDo: switch to "hash/stats/" prefix to avoid reading over extra files
+        if filename.startswith("hash/") and filename.endswith(".stats"):
+            info = loadRemoteJSON(bucket, filename)
+            print("{}, {}".format(info['filename'], info["size"]))
 
 if __name__ == "__main__":
 
