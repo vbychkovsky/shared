@@ -15,6 +15,7 @@ import json
 import itertools
 import logging
 import tempfile
+import time
 
 def computeSHA1(filename, blocksize=None):
     sha1 = hashlib.sha1()
@@ -66,9 +67,13 @@ def uploadFileToB2(
 
         sha1 = computeSHA1(filepath)
 
+        date = time.gmtime(stats.st_mtime)
+        datestr = time.strftime("%Y-%m-%d-%H-%M-%S", date)
+
         basename = os.path.basename(filepath)
         b2Filename = "{hashDir}/{sha1}_{basename}".format(**dict(globals(), **locals()))
         b2StatsName = "{hashDir}/{sha1}{infoExt}".format(**dict(globals(), **locals()))
+        b2ctimeName = "{hashDir}/ctime/{datestr}/{sha1}".format(**dict(globals(), **locals()))
 
         localFileStats = {
             'filename': os.path.basename(filepath),
@@ -95,8 +100,6 @@ def uploadFileToB2(
 
             logging.debug(output)
 
-            # ToDo: upload date index entry here
-
             # copy some fields into the output
             for field in ['fileId', 'uploadTimestamp']:
                 localFileStats[field] = output[field]
@@ -108,9 +111,17 @@ def uploadFileToB2(
                 # make sure that the data is in the OS buffers for later reading
                 f.flush()
                 # upload it
+
+                # upload based on creation time
+                output = rawUploadFileToB2(bucket, b2ctimeName, f.name)
+                if output is None:
+                    return False
+
+                # upload for content hash
                 output = rawUploadFileToB2(bucket, b2StatsName, f.name)
                 if output is not None:
                     return True
+
 
         return False
 
