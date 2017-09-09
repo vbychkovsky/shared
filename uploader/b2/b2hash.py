@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
 # ToDo:
-# - implement list/download metadata
+# - implement re-indexing functionality
+# - index based on EXIF data
+# - skip duplicate uploads (for actual files only)
+# - add listing datafile
+# - add downloading
 # - upload a date link file
 # - (opt) refactor B2 commands
 # -- maybe replace B2 shell call with python?
@@ -39,6 +43,7 @@ def loadRemoteJSON(bucket, filename):
 
 
 def rawUploadFileToB2(bucket, b2Filepath, localFilepath):
+    # ToDo: could 'list-file-name' to check if a given file exists
     try:
         output = subprocess.check_output(['b2', 'upload-file', bucket, localFilepath, b2Filepath])
         # ToDo: can the above upload fail without giving a bad return code?
@@ -68,12 +73,13 @@ def uploadFileToB2(
         sha1 = computeSHA1(filepath)
 
         date = time.gmtime(stats.st_mtime)
-        datestr = time.strftime("%Y-%m-%d-%H-%M-%S", date)
+        dateformat = "%Y/%m/%d/%H-%M-%S"
+        datestr = time.strftime(dateformat, date)
 
         basename = os.path.basename(filepath)
-        b2Filename = "{hashDir}/{sha1}_{basename}".format(**dict(globals(), **locals()))
-        b2StatsName = "{hashDir}/{sha1}{infoExt}".format(**dict(globals(), **locals()))
-        b2ctimeName = "{hashDir}/ctime/{datestr}/{sha1}".format(**dict(globals(), **locals()))
+        b2Filename = "{hashDir}/files/{sha1}_{basename}".format(**dict(globals(), **locals()))
+        b2StatsName = "{hashDir}/stats/{sha1}.stats".format(**dict(globals(), **locals()))
+        b2ctimeName = "{hashDir}/ctime/{datestr}/{sha1}.stats".format(**dict(globals(), **locals()))
 
         localFileStats = {
             'filename': os.path.basename(filepath),
@@ -94,6 +100,8 @@ def uploadFileToB2(
                 return True
 
         else:
+            # ToDo: could I check if this file is already uploaded and skip uploads?
+            # could I do for this for every file
             output = rawUploadFileToB2(bucket, b2Filename, filepath)
             if output is None:
                 return False
@@ -104,7 +112,13 @@ def uploadFileToB2(
             for field in ['fileId', 'uploadTimestamp']:
                 localFileStats[field] = output[field]
 
+            logging.debug(output['uploadTimestamp'])
             logging.debug(localFileStats)
+
+            date = time.gmtime(output['uploadTimestamp']/1000)
+            datestr = time.strftime(dateformat, date)
+            b2uploadTimeName = "{hashDir}/uploadtime/{datestr}/{sha1}.stats".format(**dict(globals(), **locals()))
+            logging.debug("Using {} as the name".format(b2uploadTimeName))
 
             with tempfile.NamedTemporaryFile() as f:
                 json.dump(localFileStats, f)
@@ -112,13 +126,12 @@ def uploadFileToB2(
                 f.flush()
                 # upload it
 
-                # upload based on creation time
-                output = rawUploadFileToB2(bucket, b2ctimeName, f.name)
-                if output is None:
-                    return False
+                # upload all stat files
+                output = []
+                for b2Name in [b2ctimeName, b2uploadTimeName, b2StatsName]:
+                    output = rawUploadFileToB2(bucket, b2Name, f.name)
 
-                # upload for content hash
-                output = rawUploadFileToB2(bucket, b2StatsName, f.name)
+                # make sure that the final stat file got uploaded
                 if output is not None:
                     return True
 
@@ -143,13 +156,12 @@ def b2listFiles(bucket = 'myPublic1', startFile = ""):
 def listCommand(args):
     bucket = 'myPublic1'
     # ToDo turn the following command into an iterator
-    result = b2listFiles(bucket, 'hash/')
+    result = b2listFiles(bucket, args.prefix)
     for f in result['files']:
         filename = f["fileName"]
-        # ToDo: switch to "hash/stats/" prefix to avoid reading over extra files
-        if filename.startswith("hash/") and filename.endswith(".stats"):
+        if filename.startswith(args.prefix) and filename.endswith(".stats"):
             info = loadRemoteJSON(bucket, filename)
-            print("{}, {}".format(info['filename'], info["size"]))
+            print("{}, {}, {}".format(info['filename'], info["size"], filename))
 
 
 if __name__ == "__main__":
@@ -164,6 +176,7 @@ if __name__ == "__main__":
     uploadcmd.set_defaults(func=uploadCommand)
 
     listcmd = subparsers.add_parser('list', help='read metadata for hash-uploads')
+    listcmd.add_argument('--prefix', default="hash/stats/", help='filename prefix to search')
     listcmd.set_defaults(func=listCommand)
 
     args = parser.parse_args()
