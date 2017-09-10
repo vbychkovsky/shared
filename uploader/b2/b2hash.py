@@ -4,6 +4,9 @@
 # - implement re-indexing functionality
 # - index based on EXIF data
 # - skip duplicate uploads (for actual files only)
+# -- download transactions are 10x cheaper than listing transactions, assuming no cost for header downloads
+# -- upload transactions are completely free
+# -- so it would make sense to not worry about small uploads, but maybe resume large uploads.
 # - add listing datafile
 # - add downloading
 # - upload a date link file
@@ -20,6 +23,11 @@ import itertools
 import logging
 import tempfile
 import time
+
+try:
+    import exiftool
+except:
+    exiftool = None
 
 def computeSHA1(filename, blocksize=None):
     sha1 = hashlib.sha1()
@@ -43,7 +51,6 @@ def loadRemoteJSON(bucket, filename):
 
 
 def rawUploadFileToB2(bucket, b2Filepath, localFilepath):
-    # ToDo: could 'list-file-name' to check if a given file exists
     try:
         output = subprocess.check_output(['b2', 'upload-file', bucket, localFilepath, b2Filepath])
         # ToDo: can the above upload fail without giving a bad return code?
@@ -79,6 +86,7 @@ def uploadFileToB2(
         basename = os.path.basename(filepath)
         b2Filename = "{hashDir}/files/{sha1}_{basename}".format(**dict(globals(), **locals()))
         b2StatsName = "{hashDir}/stats/{sha1}.stats".format(**dict(globals(), **locals()))
+        b2MetadataName = "{hashDir}/metadata/{sha1}.json".format(**dict(globals(), **locals()))
         b2ctimeName = "{hashDir}/ctime/{datestr}/{sha1}.stats".format(**dict(globals(), **locals()))
 
         localFileStats = {
@@ -120,11 +128,21 @@ def uploadFileToB2(
             b2uploadTimeName = "{hashDir}/uploadtime/{datestr}/{sha1}.stats".format(**dict(globals(), **locals()))
             logging.debug("Using {} as the name".format(b2uploadTimeName))
 
+            date_time_original = None
+            if exiftool is not None:
+                with exiftool.ExifTool() as et:
+                    exif = et.get_metadata(filepath)
+                    date_time_original = exif.get("EXIF:DateTimeOriginal", None)
+                    with tempfile.NamedTemporaryFile() as f:
+                        json.dump(exif, f)
+                        f.flush()
+                        rawUploadFileToB2(bucket, b2MetadataName, f.name)
+
+
             with tempfile.NamedTemporaryFile() as f:
                 json.dump(localFileStats, f)
                 # make sure that the data is in the OS buffers for later reading
                 f.flush()
-                # upload it
 
                 # upload all stat files
                 output = []
